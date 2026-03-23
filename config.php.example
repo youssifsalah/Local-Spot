@@ -3,11 +3,11 @@
 define('APPLICATION', 'Catalog');
 
 // HTTP
-define('HTTP_SERVER', 'http://localhost/opencart1/');
+define('HTTP_SERVER', 'http://localhost/Local-Spot/');
 
 // DIR
-define('DIR_OPENCART', 'C:/xampp/htdocs/opencart1/');
-// define('DIR_APPLICATION', 'C:/xampp/htdocs/opencart1/salah/');
+define('DIR_OPENCART', 'C:/xampp/htdocs/Local-Spot/');
+// define('DIR_APPLICATION', 'C:/xampp/htdocs/Local-Spot/salah/');
 define('DIR_APPLICATION', DIR_OPENCART . 'catalog/');
 define('DIR_EXTENSION', DIR_OPENCART . 'extension/');
 define('DIR_IMAGE', DIR_OPENCART . 'image/');
