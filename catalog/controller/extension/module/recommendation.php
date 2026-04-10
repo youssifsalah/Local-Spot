@@ -3,6 +3,10 @@ namespace Opencart\Catalog\Controller\Extension\Module;
 
 class Recommendation extends \Opencart\System\Engine\Controller {
     public function index(array $setting = []): string {
+        if (!$this->config->get('module_recommendation_status')) {
+            return '';
+        }
+
         $this->load->language('extension/module/recommendation');
         $this->load->model('tool/image');
 

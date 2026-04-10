@@ -284,6 +284,8 @@ class Cart extends \Opencart\System\Engine\Controller {
 
 		if (!$json) {
 			$this->cart->add($product_id, $quantity, $option, $subscription_plan_id);
+			$this->load->model('tool/ai_event');
+			$this->model_tool_ai_event->logEvent($product_id, 'add_to_cart');
 
 			$json['success'] = sprintf($this->language->get('text_success'), $this->url->link('product/product', 'language=' . $this->config->get('config_language') . '&product_id=' . $product_id), $product_info['name'], $this->url->link('checkout/cart', 'language=' . $this->config->get('config_language')));
 

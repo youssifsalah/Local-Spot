@@ -31,6 +31,8 @@ class Product extends \Opencart\System\Engine\Controller {
 			$this->document->addLink($this->url->link('product/product', 'language=' . $this->config->get('config_language') . '&product_id=' . $product_id), 'canonical');
 
 			$data['breadcrumbs'] = [];
+			$data['ai_view_delay_ms'] = defined('AI_VIEW_DELAY_MS') ? (int)AI_VIEW_DELAY_MS : 8000;
+			$data['ai_view_url'] = $this->url->link('tool/ai_event.log', 'language=' . $this->config->get('config_language'), true);
 
 			$data['breadcrumbs'][] = [
 				'text' => $this->language->get('text_home'),

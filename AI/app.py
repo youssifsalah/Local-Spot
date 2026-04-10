@@ -11,6 +11,7 @@ import lightgbm as lgb
 import json
 import random
 from sklearn.preprocessing import LabelEncoder
+import hashlib
 
 # =============================================================
 # LOAD ALL FILES ON STARTUP
@@ -66,20 +67,47 @@ print("All models loaded ✅")
 # =============================================================
 # STEP 1: CONTENT-BASED FILTER → 50 CANDIDATES
 # =============================================================
-def get_candidates(events, topk=50):
-    # استخرج الـ product IDs من الـ events
-    history = [e["product_id"] for e in events if e["product_id"] in product_lookup_updated]
+def _stable_seed(user_id, events):
+    parts = []
+    for e in events:
+        pid = e.get("product_id")
+        if pid is None:
+            continue
+        et = e.get("event_type", "purchase")
+        parts.append(f"{pid}:{et}")
 
-    if not history:
+    seed_src = f"{user_id}|" + "|".join(parts)
+    digest = hashlib.sha256(seed_src.encode("utf-8")).hexdigest()
+    return int(digest[:16], 16)
+
+
+def get_candidates(events, user_id=0, topk=50):
+    # استخرج الـ product IDs من الـ events
+    weights = {"purchase": 3, "add_to_cart": 2, "view": 1}
+    history_set = set()
+    subcat_counts = {}
+
+    for e in events:
+        pid = e.get("product_id")
+        if pid is None or pid not in product_lookup_updated:
+            continue
+        event_type = e.get("event_type", "purchase")
+        weight = weights.get(event_type, 1)
+        history_set.add(pid)
+
+        subcat = product_lookup_updated[pid]["subcategory"]
+        subcat_counts[subcat] = subcat_counts.get(subcat, 0) + weight
+
+    rng = random.Random(_stable_seed(user_id, events))
+
+    if not history_set:
         # Cold start — خد من كل الـ products عشوائي
-        candidates = random.sample(list(product_lookup_updated.keys()), min(topk, len(product_lookup_updated)))
+        candidates = rng.sample(list(product_lookup_updated.keys()), min(topk, len(product_lookup_updated)))
         return candidates
 
     # اعرف الـ user بيحب إيه من الـ history
     from collections import Counter
-    user_subcats_list = [product_lookup_updated[pid]["subcategory"] for pid in history]
-    subcat_counts = Counter(user_subcats_list)
-    top_subcats = [s for s, _ in subcat_counts.most_common(3)]
+    top_subcats = [s for s, _ in Counter(subcat_counts).most_common(3)]
     other_subcats = [s for s in all_subcats if s not in top_subcats]
 
     # 70% من المفضل + 30% تنوع
@@ -88,23 +116,23 @@ def get_candidates(events, topk=50):
 
     primary_products = [
         pid for pid, p in product_lookup_updated.items()
-        if p["subcategory"] in top_subcats and pid not in history
+        if p["subcategory"] in top_subcats and pid not in history_set
     ]
 
     secondary_products = [
         pid for pid, p in product_lookup_updated.items()
-        if p["subcategory"] in other_subcats and pid not in history
+        if p["subcategory"] in other_subcats and pid not in history_set
     ]
 
-    random.shuffle(primary_products)
-    random.shuffle(secondary_products)
+    rng.shuffle(primary_products)
+    rng.shuffle(secondary_products)
 
     candidates = primary_products[:n_primary] + secondary_products[:n_secondary]
 
     # Fallback لو مش كفاية
     if len(candidates) < topk:
-        remaining = [p for p in product_lookup_updated.keys() if p not in candidates and p not in history]
-        random.shuffle(remaining)
+        remaining = [p for p in product_lookup_updated.keys() if p not in candidates and p not in history_set]
+        rng.shuffle(remaining)
         candidates += remaining[:topk - len(candidates)]
 
     return candidates[:topk]
@@ -191,13 +219,18 @@ def recommend():
         if not events:
             return jsonify({"recommendations": []})
 
-        candidates = get_candidates(events, topk=50)
+        candidates = get_candidates(events, user_id=user_id, topk=50)
         recommendations = rank_with_lgb(candidates, user_id, limit)
 
         return jsonify({"recommendations": recommendations})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    # Local dev server for XAMPP + OpenCart integration
+    app.run(host="127.0.0.1", port=5000, debug=False)
 
 @app.route("/health", methods=["GET"])
 def health():

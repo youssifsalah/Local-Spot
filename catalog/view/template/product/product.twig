@@ -389,6 +389,22 @@ $(document).ready(function() {
             enabled: true
         }
     });
+
+    var aiDelay = {{ ai_view_delay_ms|default(8000) }};
+    if (aiDelay > 0 && {{ product_id }} > 0) {
+        setTimeout(function() {
+            if (document.visibilityState && document.visibilityState !== 'visible') {
+                return;
+            }
+
+            $.ajax({
+                url: '{{ ai_view_url }}',
+                type: 'post',
+                data: { product_id: {{ product_id }}, event_type: 'view' },
+                dataType: 'json'
+            });
+        }, aiDelay);
+    }
 });
 //--></script>
 {{ footer }}
